@@ -21,6 +21,7 @@ conn.execute("DELETE FROM Film")
 conn.execute("DELETE FROM Genre")
 conn.execute("DELETE FROM Genre_Utilisateur")
 conn.execute("DELETE FROM Utilisateur")
+conn.execute("DELETE FROM sqlite_sequence")
 
 # 1. Insérer les genres
 print(f"Insertion de {len(genres)} genres...")
