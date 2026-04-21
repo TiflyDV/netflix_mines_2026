@@ -22,7 +22,7 @@ jobs:
 
       - name: Installer les dépendances
         run: |
-          pip install fastapi uvicorn httpx pytest pytest-json-report
+          pip install fastapi uvicorn httpx pytest pytest-json-report sqlite3 tempfile db requests faker pydantic
           pip install -r requirements.txt
 
       - name: Lancer les tests et générer le rapport
