@@ -4,3 +4,5 @@ pytest
 httpx
 faker
 pytest-json-report
+pyjwt
+datetime
