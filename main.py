@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException  # Ajout de HTTPException
 from pydantic import BaseModel
 from db import get_connection
 import sqlite3
+import jwt
+import datetime
 
 app = FastAPI()
 
@@ -94,16 +96,85 @@ def list_genres():
         res = cursor.fetchall()
         return [dict(row) for row in res]
             
+SECRET_KEY = "super_mot_de_passe_secret_netflix"
+ALGORITHM = "HS256"
+TOKEN_EXPIRE_MINUTES = 120 
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+
+    expire = datetime.now(timezone.utc) + timedelta(minutes=TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    
+  
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+
+def get_current_user_id(authorization):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="token pas bon")
+    
+    token = authorization.split(" ")[1]
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: int = payload.get("user_id")
+        
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="token pas bon")
+            
+        return user_id
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expiré")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Token pas bon")
+    
+
+class UserAuth(BaseModel):
+    email: str
+    password: str
+    pseudo: str | None = None
+
+class PreferenceIn(BaseModel):
+    genre_id: int
 
 
 
 
+@app.post("/auth/register")
+def register(user: UserAuth):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT ID FROM User WHERE Email = '{user.email}'")
+        if cursor.fetchone():
+            raise HTTPException(status_code=409, detail="email dejaa utilisé")
+            
+        
+        cursor.execute(f"""
+            INSERT INTO User (Email, Pseudo, Password) 
+            VALUES ('{user.email}', '{user.pseudo}', '{user.password}') 
+            RETURNING ID
+        """)
+        new_user_id = cursor.fetchone()["ID"]
+        conn.commit()
+        access_token = create_access_token(data={"user_id": new_user_id})
+        return {"access_token": access_token, "token_type": "bearer"}
 
-
-
-
-
-
+@app.post("/auth/login")
+def login(user: UserAuth):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT ID FROM User WHERE Email = '{user.email}' AND Password = '{user.password}'")
+        database_user = cursor.fetchone()
+        
+        if not database_user:
+            raise HTTPException(status_code=401, detail="Identifiants pas bon")
+            
+        access_token = create_access_token(data={"user_id": database_user["ID"]})
+        return {"access_token": access_token, "token_type": "bearer"}
 
 
 
