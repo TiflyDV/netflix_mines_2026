@@ -31,7 +31,7 @@ async def createFilm(film: Film):
         res = cursor.fetchone()
         return dict(res) 
 
-
+# les GET de films
 @app.get("/films/{id}")
 def get_one_film(id: int):
     with get_connection() as conn:
@@ -82,6 +82,29 @@ def get_films(page: int = 1, per_page: int = 20, genre_id: int | None = None):
             "per_page": per_page,
             "total": total_films
         }
+
+#Catégories de films (genre,...)
+@app.get("/genres")
+def list_genres():
+    with get_connection() as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        query = "SELECT * FROM Genre ORDER BY Type ASC"
+        cursor.execute(query)
+        res = cursor.fetchall()
+        return [dict(row) for row in res]
+            
+
+
+
+
+
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
