@@ -1,13 +1,5 @@
 fastapi
-uvicornannotated-doc
-annotated-types
-anyio
-click
-h11
-idna
-pydantic
-pydantic_core
-starlette
-typing-inspection
-typing_extensions
 uvicorn
+pytest
+httpx
+faker
