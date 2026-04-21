@@ -102,13 +102,11 @@ TOKEN_EXPIRE_MINUTES = 120
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-
     expire = datetime.now(timezone.utc) + timedelta(minutes=TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    
-  
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 
 
 
@@ -147,21 +145,25 @@ class PreferenceIn(BaseModel):
 @app.post("/auth/register")
 def register(user: UserAuth):
     with get_connection() as conn:
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute(f"SELECT ID FROM Utilisateur WHERE AdresseMail = '{user.email}'")
+        cursor.execute("SELECT ID FROM Utilisateur WHERE AdresseMail = ?", (user.email,))
         if cursor.fetchone():
-            raise HTTPException(status_code=409, detail="email dejaa utilisé")
+            raise HTTPException(status_code=409, detail="email deja utilise")
             
-        
-        cursor.execute(f"""
-            INSERT INTO Utilisateur (AdresseMail, Pseudo, MotDePasse) 
-            VALUES ('{user.email}', '{user.pseudo}', '{user.password}') 
-            RETURNING ID
-        """)
-        new_user_id = cursor.fetchone()["ID"]
-        conn.commit()
-        access_token = create_access_token(data={"user_id": new_user_id})
-        return {"access_token": access_token, "token_type": "bearer"}
+        try:
+            cursor.execute("""
+                INSERT INTO Utilisateur (AdresseMail, Pseudo, MotDePasse) 
+                VALUES (?, ?, ?) 
+                RETURNING ID
+            """, (user.email, user.pseudo, user.password))
+            
+            res = cursor.fetchone()
+            new_user_id = res["ID"]
+            conn.commit()
+            access_token = create_access_token(data={"user_id": new_user_id})
+            return {"access_token": access_token, "token_type": "bearer"}
+
 
 @app.post("/auth/login")
 def login(user: UserAuth):
